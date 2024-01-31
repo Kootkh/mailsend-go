@@ -1,0 +1,60 @@
+brews:
+  - tap:
+        owner: muquit
+        name: mailsend-go
+    folder: Formula
+    homepage: https://github.com/muquit/mailsend-go
+    description: "Command line tool to send mail via SMTP protocol"
+builds:
+ - goos:
+     - darwin
+     - linux
+     - windows
+   goarch:
+     - 386
+     - amd64
+     - arm
+   goarm:
+     - 7
+   ignore:
+     - goos: darwin
+       goarch: 386
+     - goos: linux
+       goarch: 386
+archives:
+  - name_template: "{{ .ProjectName }}_{{ .Version}}_{{.Os}}-{{ .Arch }}"
+    replacements:
+      amd64: 64bit
+      386: 32bit
+      darwin: mac
+      linux: linux
+      windows: windows
+      arm: ARM
+    format_overrides:
+      - goos: windows
+        format: zip
+    files:
+        - docs/mailsend-go.1
+        - README.md
+        - LICENSE.txt
+    wrap_in_directory: mailsend-go-dir
+nfpms:
+  - file_name_template: "{{ .ProjectName }}_{{ .Version}}_{{.Os}}-{{ .Arch }}"
+    homepage:  "https://muquit.com/"
+    description: "Command like tool to send email via SMTP protocol"
+    maintainer: "Muhammad Muquit <muquit@muquit.com>"
+    license: "MIT"
+    vendor: "muquit.com"
+    formats:
+    - deb
+    - rpm
+    replacements:
+      amd64: 64bit
+      linux: linux
+      arm: ARM
+    bindir: /usr/local/bin
+    files:
+        "docs/mailsend-go.1": "/usr/local/share/man/man1/mailsend-go.1"
+        "README.md": "/usr/local/share/docs/mailsend-go/README.md"
+        "LICENSE.txt": "/usr/local/share/docs/mailsend-go/LICENSE.txt"
+

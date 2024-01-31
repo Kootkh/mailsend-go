@@ -1,0 +1,16 @@
+How to release notes for myself
+===============================
+
+* Update version in code
+* Update latest version in markdown docs/version.md
+* update docs/ChagneLog.md
+* Generate docs, Update usage (make dev;make clean;make)
+* Look at README.md and ChangeLog.md
+* Compile
+* Test
+* commit
+* git push
+* tagit ./scripts/tagit.rb
+  tag will be pushed
+* Release 
+  GITHUB_TOKEN=XXX ./scripts/release.sh ok

@@ -1,0 +1,18 @@
+My personal note
+================
+* Update version in code
+* Update latest version in markdown docs/version.md
+* Update docs/ChangeLog.md
+* Generate docs, Update usage (make dev;make clean;make)
+* Compile
+* Test
+* commit
+* push
+* tag and push tag by running ./scripts/tagit.sh
+  It will force push the tag. Go and remove tag from github if needed.
+* Release
+  ./scripts/release.sh snap - to test
+  - Final publish
+  set GITHUB_TOKEN env var and then
+  ./scripts/release.sh ok to publish
+  
