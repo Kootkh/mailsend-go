@@ -113,7 +113,7 @@ repeat.
         attach \
          -file "/path/file.pdf"
 
-The name of the attachment will be file.pdf. To change the attachmetn
+The name of the attachment will be file.pdf. To change the attachment
 name, use the -name flag. e.g.
 
         attach -file "/path/file.pdf" -name "report.pdf"
@@ -177,7 +177,7 @@ line. Name can be empty but comma must be specified. Example of a list
 file:
 
         # This is a comment.
-        # The syntax is Name,email address in a line. Name can be empty but comma 
+        # The syntax is Name,email address in a line. Name can be empty but comma
         # must be specified
         John Snow,jsnow@example.com
         Mary Jane,mjane@example.com
