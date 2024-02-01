@@ -36,7 +36,6 @@ import (
 	"encoding/csv"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -241,7 +240,7 @@ type DefaultValidator struct {
 // ------------------------------------------------------------------------------------------------
 // ------------------------------------------------------------------------------------------------
 
-// StringValidator - Описание структуры для объекта валидации строк "StringValidator".
+// StringValidator - Описание структуры для объекта валидации строковых значений.
 type StringValidator struct {
 	Required bool
 	Default  string
@@ -251,7 +250,7 @@ type StringValidator struct {
 // ------------------------------------------------------------------------------------------------
 // ------------------------------------------------------------------------------------------------
 
-// NumberValidator performs numerical value validation.
+// NumberValidator - Описание структуры для объекта валидации числовых значений.
 type NumberValidator struct {
 	Required bool
 	Default  int
@@ -263,7 +262,11 @@ type NumberValidator struct {
 // ------------------------------------------------------------------------------------------------
 // ------------------------------------------------------------------------------------------------
 
-// return true if file exists, false otherwise
+// fileExists - метод проверки существования файла.
+//
+// Принимает: путь к файлу - path (string)
+//
+// Возвращает: если файл существует - true, иначе false (bool)
 func fileExists(path string) bool {
 	if _, err := os.Stat(path); err == nil {
 		return true
@@ -368,11 +371,11 @@ func (v StringValidator) Validate(val interface{}) (bool, error) {
 // ------------------------------------------------------------------------------------------------
 // ------------------------------------------------------------------------------------------------
 
-// getValidator - возвращает структуру интерфейса Validator на основании переданного в функцию тега типа валидации (tag string)
+// getValidator - конструктор валидатора
 //
-// Принимает: тег (teg string)
+// Принимает: тег типа валидации (teg string)
 //
-// Возвращает: структуру интерфейса Validator
+// Возвращает: структуру интерфейса Validator соответствующего типа
 func getValidator(tag string) Validator {
 	args := strings.Split(tag, ",")
 	logDebug("args length: %d\n", len(args))
@@ -408,20 +411,28 @@ func getValidator(tag string) Validator {
 // ------------------------------------------------------------------------------------------------
 // ------------------------------------------------------------------------------------------------
 
-// Validate required members of structs using reflection
-
+// validateGlobalFlags validates required members of structs global options using reflection and returns a slice of errors.
+//
+// Возвращает: Перечень ошибок (slice []errors).
 func validateGlobalFlags() []error {
+
 	errs := []error{}
+
 	// validate global options
 	options := mailsend.options
+
 	v := reflect.ValueOf(options)
+
 	for i := 0; i < v.NumField(); i++ {
 		tag := v.Type().Field(i).Tag.Get("validate")
 		if tag == "" {
 			continue
 		}
+
 		logDebug("Tag: %s\n", tag)
+
 		validator := getValidator(tag)
+
 		// Perform validation
 		valid, err := validator.Validate(v.Field(i).Interface())
 
@@ -430,6 +441,7 @@ func validateGlobalFlags() []error {
 			errs = append(errs, fmt.Errorf("%s %s", v.Type().Field(i).Name, err.Error()))
 		}
 	}
+
 	return errs
 }
 
@@ -510,33 +522,44 @@ func parseHeaderCommandParams(args []string, command string) int {
 // ------------------------------------------------------------------------------------------------
 
 // Parse all the valid flags of attach command
-// muquit@muquit.com - - August-18-2018 19:36:47
-// /////////////////////////////////////////////////////////////////////////////
 func parseAttachCommandParams(args []string, command string) int {
+
 	argc := len(args)
 	a := NewAttachment()
 	j := 1
+
 	max := 6 // update if new options are added
+
 	for i := 1; i < argc; i++ {
+
 		arg := args[i]
+
 		showHelp(arg)
+
 		if foundAnotherCommand(arg) {
 			break
 		}
+
 		if i > max {
 			break
 		}
+
 		if arg == "-file" || arg == "--file" {
 			i++
+
 			if i == argc {
 				fatalError("Missing value with %s for command %s\n", arg, command)
 			}
+
 			if !fileExists(args[i]) {
 				fatalError("Attachment file %s does not exist\n", args[i])
 			}
+
 			a.FilePath = args[i]
 			j = i
+
 		}
+
 		if arg == "-mime-type" || arg == "--mime-type" {
 			i++
 			if i == argc {
@@ -545,154 +568,217 @@ func parseAttachCommandParams(args []string, command string) int {
 			a.MimeType = args[i]
 			j = i
 		}
+
 		if arg == "-inline" || arg == "--inline" {
 			a.Inline = true
+
 			j = i
 		}
+
 		if arg == "-name" || arg == "--name" {
 			i++
+
 			if i == argc {
 				fatalError("Missing value with %s for command %s\n", arg, command)
 			}
+
 			a.Name = args[i]
+
 			logDebug("Name: " + a.Name)
+
 			j = i
 		}
 	}
+
 	if len(a.FilePath) == 0 {
 		fatalError("No file specified with -file for for command %s\n", command)
 	}
+
 	mailsend.attachments = append(mailsend.attachments, *a)
+
 	if j > max {
 		j = max
 	}
+
 	logDebug("> Encoding Base64 %T\n", gomail.Base64)
+
 	return j
 }
 
 // ------------------------------------------------------------------------------------------------
 // ------------------------------------------------------------------------------------------------
 
+// ...
 func showHelp(arg string) {
+
 	if arg == "-h" || arg == "-help" || arg == "--h" || arg == "--help" {
 		showUsageAndExit()
 	}
+
 }
 
 // ------------------------------------------------------------------------------------------------
 // ------------------------------------------------------------------------------------------------
 
+// ...
 func parseAuthCommandParams(args []string, command string) int {
 	argc := len(args)
 	j := 1
 	max := 4
+
 	auth := NewAuth()
+
 	for i := 1; i < argc; i++ {
 		arg := args[i]
+
 		if foundAnotherCommand(arg) {
 			break
 		}
+
 		showHelp(arg)
+
 		if i > max {
 			break
 		}
 
 		if arg == "-user" {
 			i++
+
 			if i == argc {
 				fatalError("Missing value with %s for command %s\n", arg, command)
 			}
+
 			auth.Username = args[i]
+
 			j = i
 		}
+
 		if arg == "-pass" {
 			i++
+
 			if i == argc {
 				fatalError("Missing value with %s for command %s\n", arg, command)
 			}
+
 			auth.Password = args[i]
+
 			j = i
 		}
 	}
+
 	if len(auth.Username) == 0 {
 		fatalError("No auth username specified with -user with command %s\n", command)
 	}
+
 	if len(auth.Password) == 0 {
 		evar := "SMTP_USER_PASS"
 		pass, ok := os.LookupEnv(evar)
+
 		if !ok {
 			fatalError("No auth password specified with -pass or env variable %s for command %s\n", evar, command)
 		}
+
 		auth.Password = pass
 	}
+
 	mailsend.auth = *auth
+
 	if j > max {
+
 		j = max
+
 	}
+
 	return j
 }
 
 // ------------------------------------------------------------------------------------------------
 // ------------------------------------------------------------------------------------------------
 
+// ...
 func parseBodyCommandParams(args []string, command string) int {
 	argc := len(args)
 	j := 1
 	max := 6
+
 	body := NewBody()
+
 	for i := 1; i < argc; i++ {
 		arg := args[i]
+
 		showHelp(arg)
+
 		if foundAnotherCommand(arg) {
 			break
 		}
+
 		if i > max {
 			break
 		}
+
 		if arg == "-file" {
 			i++
+
 			if i == argc {
 				fatalError("Missing value with %s for command %s\n", arg, command)
 			}
+
 			if !fileExists(args[i]) {
 				fatalError("File %s to add a mail body does not exist\n", args[i])
 			}
+
 			content := readFile(args[i])
 			body.content = string(content)
+
 			j = i
+
 		} else if arg == "-m" || arg == "-msg" || arg == "-message" || arg == "--m" || arg == "--msg" || arg == "--message" {
 			i++
+
 			if i == argc {
 				fatalError("Missing value with %s for command %s\n", arg, command)
 			}
+
 			body.content = args[i]
+
 			j = i
+
 		} else if arg == "-mime-type" || arg == "--mime-type" {
 			i++
+
 			if i == argc {
 				fatalError("Missing value with %s for command %s\n", arg, command)
 			}
+
 			body.mimeType = args[i]
+
 			j = i
+
 		}
 	}
+
 	if len(body.content) == 0 {
 		fatalError("Path of a text file or a message must be specified with -file or -msg for command %s\n", command)
 	}
+
 	if len(body.mimeType) == 0 {
 		logDebug("Detecting MIME Type....\n")
 		body.mimeType = contentType([]byte(body.content))
 	}
+
 	mailsend.body = *body
+
 	if j > max {
 		j = max
 	}
+
 	return j
 }
 
 // ------------------------------------------------------------------------------------------------
 // ------------------------------------------------------------------------------------------------
 
+// ...
 func showUsageAndExit() {
 	v := " Version: @($) mailsend-go v" + version
 	usage := ` mailsend-go [options]
@@ -754,25 +840,35 @@ Environment variables:
 // ------------------------------------------------------------------------------------------------
 // ------------------------------------------------------------------------------------------------
 
-// create slice of addresses from comma separated address
+// makeRecipientAddresses - create slice of addresses from comma separated address
 func makeRecipientAddresses(to string) []string {
+
 	var addresses []string
+
 	addrs := strings.Split(to, ",")
+
 	for i := range addrs {
 		addr := addrs[i]
+
 		if len(addr) > 0 {
 			// remove leading and trailing spaces
 			addresses = append(addresses, strings.TrimSpace(addr))
 		}
+
 	}
+
 	return addresses
+
 }
 
 // ------------------------------------------------------------------------------------------------
 // ------------------------------------------------------------------------------------------------
 
+// constructMail - конструктор итогового сообщения
 func constructMail(fromName string, fromAddress string, toName string, toAddress string) *gomail.Message {
+
 	o := mailsend.options
+
 	m := gomail.NewMessage()
 
 	if len(o.CharacterSet) > 0 {
@@ -780,51 +876,85 @@ func constructMail(fromName string, fromAddress string, toName string, toAddress
 	}
 
 	if len(fromName) > 0 {
+
 		m.SetAddressHeader("From", fromAddress, fromName)
+
 	} else {
+
 		m.SetHeader("From", fromAddress)
+
 	}
 
 	if len(toName) > 0 {
+
 		m.SetAddressHeader("To", toAddress, toName) // Off for now
+
 	} else {
+
 		recipients := makeRecipientAddresses(toAddress)
+
 		addresses := make([]string, len(recipients))
+
 		for i, to := range recipients {
+
 			logDebug(" To: %s\n", to)
+
 			addresses[i] = m.FormatAddress(to, "")
+
 		}
+
 		// Issue #2
 		m.SetHeader("To", addresses...)
+
 	}
 
 	if len(o.Cc) > 0 {
+
 		logDebug("Setting Carbon Copy: %s\n", o.Cc)
+
 		recipients := makeRecipientAddresses(o.Cc)
+
 		addresses := make([]string, len(recipients))
+
 		for i, cc := range recipients {
+
 			logDebug(" Cc: %s\n", cc)
+
 			addresses[i] = m.FormatAddress(cc, "")
+
 		}
+
 		// Issue #2
 		m.SetHeader("Cc", addresses...)
+
 	}
 
 	if len(o.Bcc) > 0 {
+
 		logDebug("Setting Bind Carbon Copy: %s\n", o.Bcc)
+
 		recipients := makeRecipientAddresses(o.Bcc)
+
 		addresses := make([]string, len(recipients))
+
 		for i, bcc := range recipients {
+
 			logDebug(" Bcc: %s\n", bcc)
+
 			addresses[i] = m.FormatAddress(bcc, "")
 		}
+
 		// Issue #2
 		m.SetHeader("Bcc", addresses...)
+
 	}
 
 	if len(o.ReplyToAddress) > 0 {
+
 		logDebug("Setting ReplyTo: %s\n", o.ReplyToAddress)
+
 		m.SetHeader("reply-to", m.FormatAddress(o.ReplyToAddress, ""))
+
 	}
 
 	m.SetHeader("Subject", o.Subject)
@@ -834,43 +964,76 @@ func constructMail(fromName string, fromAddress string, toName string, toAddress
 
 	// set custom headers if specified
 	for _, h := range mailsend.headers {
+
 		m.SetHeader(h.name, h.value)
+
 	}
 
 	if len(mailsend.body.content) > 0 {
+
 		logDebug("Attach body\n")
+
 		// Replace \n with real new line. Issue #22
 		msg := strings.Replace(mailsend.body.content, `\n`, "\n", -1)
+
 		m.SetBody(mailsend.body.mimeType, msg)
+
 	}
 
 	for _, a := range mailsend.attachments {
+
 		if len(a.MimeType) > 0 {
+
 			logDebug("Setting MIME-TYPE of the message to: %s\n", a.MimeType)
+
 			mtype := map[string][]string{"Content-Type": {a.MimeType}}
+
 			if !a.Inline {
+
 				logDebug("Disposition is attach\n")
+
 				if len(a.Name) > 0 {
+
 					m.Attach(a.FilePath, gomail.SetHeader(mtype), gomail.Rename(a.Name))
+
 				} else {
+
 					m.Attach(a.FilePath, gomail.SetHeader(mtype))
+
 				}
+
 			} else {
+
 				logDebug("Disposition is inline\n")
+
 				m.Embed(a.FilePath, gomail.SetHeader(mtype))
+
 			}
+
 		} else {
+
 			if !a.Inline {
+
 				logDebug("Attach: %s\n", a.FilePath)
+
 				if len(a.Name) > 0 {
+
 					logDebug("Name: %s\n", a.Name)
+
 					m.Attach(a.FilePath, gomail.Rename(a.Name))
+
 				} else {
+
 					m.Attach(a.FilePath)
+
 				}
+
 			} else {
+
 				logDebug("Inline: %s\n", a.FilePath)
+
 				m.Embed(a.FilePath)
+
 			}
 		}
 	}
@@ -881,9 +1044,13 @@ func constructMail(fromName string, fromAddress string, toName string, toAddress
 // ------------------------------------------------------------------------------------------------
 // ------------------------------------------------------------------------------------------------
 
+// ...
 func sendMail() {
+
 	logFile("- mailsend-go v%s starts -\n", version)
+
 	o := mailsend.options
+
 	logDebug("Subject: %s\n", o.Subject)
 	logDebug("From: %s\n", o.From)
 	logDebug("To: %s\n", o.To)
@@ -891,6 +1058,7 @@ func sendMail() {
 	logFile("Subject: %s\n", o.Subject)
 	logFile("From: %s\n", o.From)
 	logFile("To: %s\n", o.To)
+
 	//	logDebug("To Name: %s\n", o.ToName)
 	logDebug("SMTP server: %s\n", o.SMTPServer)
 	logDebug("SMTP Port: %d\n", o.Port)
@@ -901,12 +1069,19 @@ func sendMail() {
 	logFile("Setting From with name: %s,%s\n", o.From, o.FromName)
 
 	var d *gomail.Dialer
+
 	if mailsend.auth.Username != "" && mailsend.auth.Password != "" {
+
 		logDebug("Using ESMTP Authentication")
+
 		d = gomail.NewDialer(o.SMTPServer, o.Port, mailsend.auth.Username, mailsend.auth.Password)
+
 	} else {
+
 		logDebug("Not Using ESMTP Authentication")
+
 		d = &gomail.Dialer{Host: o.SMTPServer, Port: o.Port}
+
 	}
 
 	// default is localhost
@@ -915,38 +1090,58 @@ func sendMail() {
 	if mailsend.options.Ssl {
 		d.SSL = true
 	}
+
 	logDebug("SSL? %t\n", d.SSL)
+
 	if d.SSL {
+
 		// always skip verification, it segfaults if the host is an IP address
 		d.TLSConfig = &tls.Config{InsecureSkipVerify: true}
+
 	} else {
+
 		d.TLSConfig = &tls.Config{InsecureSkipVerify: !mailsend.options.VerifyCert}
+
 	}
+
 	s, err := d.Dial()
+
 	if err != nil {
 		fatalError("%s\n", err)
 	}
+
 	logDebug("Sending mail...")
 	logFile("Sending mail...")
 
 	// send mail to a list of users
 	if len(mailsend.addressList) > 0 {
+
 		// Issue #6
 		// Send to To first
 		m := constructMail(o.FromName, o.From, o.ToName, o.To)
+
 		if err := gomail.Send(s, m); err != nil {
 			log.Printf("ERROR: Could not send mail to %q: %v\n", o.To, err)
 		}
+
 		m.Reset()
+
 		for _, r := range mailsend.addressList {
+
 			m := constructMail(o.FromName, o.From, r.name, r.address)
+
 			if err := gomail.Send(s, m); err != nil {
 				log.Printf("ERROR: Could not send mail to %q: %v\n", r.address, err)
 			}
+
 			m.Reset()
+
 		}
+
 	} else {
+
 		m := constructMail(o.FromName, o.From, o.ToName, o.To)
+
 		if err := gomail.Send(s, m); err != nil {
 			fatalError("%s\n", err)
 		}
@@ -956,27 +1151,37 @@ func sendMail() {
 	if !mailsend.options.Quiet {
 		fmt.Printf("Mail Sent Successfully\n")
 	}
-	logFile("Mail Sent Successfully\n")
 
+	logFile("Mail Sent Successfully\n")
 	logFile("- mailsend-go v%s ends -\n", version)
+
 }
 
 // ------------------------------------------------------------------------------------------------
 // ------------------------------------------------------------------------------------------------
 
-// return content of the file as string
-// exit on error
+// readFile - возвращает содержимое файла по указанному пути как строковое значение ([]bytes)
+//
+// Принимает: путь к файлу - path (string)
+//
+// Возвращает: содержимое файла как строковое значение.
+//
+// Ошибка: exit on error (fatal)
 func readFile(path string) []byte {
-	b, err := ioutil.ReadFile(path)
+	b, err := os.ReadFile(path)
+
 	if err != nil {
 		fatalError("Could not read file %s:%s\n", path, err)
 	}
+
 	return b
+
 }
 
 // ------------------------------------------------------------------------------------------------
 // ------------------------------------------------------------------------------------------------
 
+// contentType - ...
 func contentType(content []byte) string {
 	return http.DetectContentType(content)
 }
@@ -984,243 +1189,372 @@ func contentType(content []byte) string {
 // ------------------------------------------------------------------------------------------------
 // ------------------------------------------------------------------------------------------------
 
+// xprintSMTPInfo - ...
 func xprintSMTPInfo() {
+
 	if mailsend.options.SMTPServer == "" {
 		fatalError("Please specify SMTP server with flag -smtp or set it indirectly with -use")
 	}
+
 	if mailsend.options.Port == 0 {
 		mailsend.options.Port = 587
 	}
+
 	logDebug("SMTP Server: %s:%d\n", mailsend.options.SMTPServer, mailsend.options.Port)
 	logDebug("Domain: %s\n", mailsend.options.Domain)
+
 	printSMTPInfo(mailsend.options.SMTPServer, mailsend.options.Port, mailsend.options.Domain, mailsend.options.Ssl, mailsend.options.VerifyCert)
+
 }
 
 // ------------------------------------------------------------------------------------------------
 // ------------------------------------------------------------------------------------------------
 
+// parseAddressListFile - ...
+//
 // Address list file a comma separated Name, Address lines
 func parseAddressListFile(listFile string) {
+
 	csvFile, err := os.Open(listFile)
+
 	if err != nil {
 		fatalError("Could not open address list file %s", listFile)
 	}
+
 	reader := csv.NewReader(bufio.NewReader(csvFile))
+
 	for {
 		line, error := reader.Read()
+
 		if error == io.EOF {
+
 			break
+
 		} else if error != nil {
+
 			fatalError("Error parsing address list CSV file: %s", error)
 		}
+
 		// If line starts with # ignore. Issue #6
 		comment := strings.HasPrefix(line[0], "#")
+
 		if comment {
 			continue
 		}
+
 		al := NewAddressList()
 		al.name = line[0]
 		al.address = strings.TrimSpace(line[1])
+
 		mailsend.addressList = append(mailsend.addressList, *al)
 	}
+
 }
 
 // ------------------------------------------------------------------------------------------------
 // ------------------------------------------------------------------------------------------------
 
+// openLogfile - ...
 func openLogfile() {
+
 	path := mailsend.options.LogfilePath
+
 	if len(path) > 0 {
+
 		f, err := os.OpenFile(path, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
+
 		if err != nil {
 			fatalError("Could not open log file %s for writing: %v", path, err)
 		}
+
 		log.SetOutput(f)
+
 	}
 }
 
 // ------------------------------------------------------------------------------------------------
 // ------------------------------------------------------------------------------------------------
 
+// main - ...
 func main() {
+
 	args := os.Args
+
 	if len(args) == 0 {
 		showUsageAndExit()
 	}
+
 	args = args[1:]
 	argc := len(args)
+
 	for i := 0; i < argc; i++ {
+
 		arg := args[i]
+
 		if arg == "-debug" || arg == "--debug" {
+
 			debug = true
+
 		} else if arg == "-h" || arg == "-help" || arg == "--h" || arg == "--help" {
+
 			showUsageAndExit()
+
 		} else if arg == "-domain" || arg == "--domain" {
 			i++
+
 			if i == argc {
 				fatalError("Missing value for %s\n", arg)
 			}
+
 			mailsend.options.Domain = args[i]
+
 		} else if arg == "-ex" || arg == "--ex" || arg == "-example" || arg == "--example" {
+
 			showExamplesAndExit()
+
 		} else if arg == "-t" || arg == "-to" || arg == "--t" || arg == "--to" {
 			i++
+
 			if i == argc {
 				fatalError("Missing value for %s\n", arg)
 			}
+
 			mailsend.options.To = args[i]
+
 		} else if arg == "-cc" || arg == "--cc" {
 			i++
+
 			if i == argc {
 				fatalError("Missing value for %s\n", arg)
 			}
+
 			mailsend.options.Cc = args[i]
+
 		} else if arg == "-bcc" || arg == "--bcc" {
 			i++
+
 			if i == argc {
 				fatalError("Missing value for %s\n", arg)
 			}
+
 			mailsend.options.Bcc = args[i]
+
 		} else if arg == "-rt" || arg == "--rt" {
 			i++
+
 			if i == argc {
 				fatalError("Missing value for %s\n", arg)
 			}
+
 			mailsend.options.ReplyToAddress = args[i]
+
 		} else if arg == "-f" || arg == "-from" || arg == "--f" || arg == "--from" {
 			i++
+
 			if i == argc {
 				fatalError("Missing value for %s\n", arg)
 			}
+
 			mailsend.options.From = args[i]
+
 		} else if arg == "-fname" || arg == "--fname" {
 			i++
+
 			if i == argc {
 				fatalError("Missing value for %s\n", arg)
 			}
+
 			mailsend.options.FromName = args[i]
+
 		} else if arg == "-sub" || arg == "-subject" || arg == "--sub" || arg == "--subject" {
 			i++
+
 			if i == argc {
 				fatalError("Missing value for %s\n", arg)
 			}
+
 			mailsend.options.Subject = args[i]
+
 		} else if arg == "-use" || arg == "--use" {
 			i++
+
 			if i == argc {
 				fatalError("Missing value for %s\n", arg)
 			}
+
 			if args[i] == "gmail" {
+
 				mailsend.options.SMTPServer = "smtp.gmail.com"
 				mailsend.options.Port = 587
+
 			} else if args[i] == "yahoo" {
+
 				mailsend.options.SMTPServer = "smtp.mail.yahoo.com"
 				mailsend.options.Port = 465
 				mailsend.options.Ssl = true
+
 			} else if args[i] == "outlook" {
+
 				mailsend.options.SMTPServer = "smtp.live.com"
 				mailsend.options.Port = 587
+
 			} else if args[i] == "gmx" {
+
 				mailsend.options.SMTPServer = "smtp.gmx.com"
 				mailsend.options.Port = 465
 				mailsend.options.Ssl = true
+
 			} else if args[i] == "zoho" {
+
 				mailsend.options.SMTPServer = "smtp.zoho.com"
 				mailsend.options.Port = 465
 				mailsend.options.Ssl = true
+
 			} else if args[i] == "aol" {
+
 				mailsend.options.SMTPServer = "smtp.aol.com"
 				mailsend.options.Port = 587
+
 			} else {
+
 				fatalError("Mailprovider '%s' not known\n", args[i])
+
 			}
+
 		} else if arg == "-smtp" || arg == "--smtp" {
 			i++
+
 			if i == argc {
 				fatalError("Missing value for %s\n", arg)
 			}
+
 			mailsend.options.SMTPServer = args[i]
+
 		} else if arg == "-p" || arg == "-port" || arg == "--p" || arg == "--port" {
 			i++
+
 			if i == argc {
 				fatalError("Missing value for %s\n", arg)
 			}
+
 			port, err := strconv.Atoi(args[i])
+
 			mailsend.options.Port = port
+
 			if err != nil {
 				fatalError("Invalid Port %s specified with %s\n", args[i], arg)
 			}
+
 		} else if arg == "-list" || arg == "--list" {
 			i++
+
 			if i == argc {
 				fatalError("Missing value for %s\n", arg)
 			}
+
 			if !fileExists(args[i]) {
 				fatalError("List file %s does not exist\n", args[i])
 			}
+
 			parseAddressListFile(args[i])
+
 			for _, al := range mailsend.addressList {
 				fmt.Printf("Name: '%s', Email: '%s'\n", al.name, al.address)
 			}
+
 		} else if arg == "-log" || arg == "--log" {
 			i++
+
 			if i == argc {
 				fatalError("Missing value for %s\n", arg)
 			}
+
 			mailsend.options.LogfilePath = args[i]
+
 		} else if arg == "-cs" || arg == "--cs" {
 			i++
+
 			if i == argc {
 				fatalError("Missing value for %s\n", arg)
 			}
+
 			mailsend.options.CharacterSet = args[i]
+
 		} else if arg == "-V" || arg == "--V" {
+
 			fmt.Printf("@(#) mailsend-go v%s\n", version)
 			os.Exit(0)
+
 		} else if arg == "-info" || arg == "--info" {
+
 			mailsend.options.PrintSMTPInfo = true
+
 		} else if arg == "-ssl" || arg == "--ssl" {
+
 			mailsend.options.Ssl = true
+
 		} else if arg == "-verifyCert" || arg == "--verifyCert" {
+
 			mailsend.options.VerifyCert = true
+
 		} else if arg == "-q" || arg == "-quiet" || arg == "--q" || arg == "--quiet" {
+
 			mailsend.options.Quiet = true
+
 		} else if arg == "body" {
+
 			j := parseBodyCommandParams(args[i:], arg)
 			i += j
+
 		} else if arg == "attach" {
+
 			j := parseAttachCommandParams(args[i:], arg)
 			i += j
+
 		} else if arg == "auth" {
+
 			j := parseAuthCommandParams(args[i:], arg)
 			i += j
+
 		} else if arg == "header" {
+
 			j := parseHeaderCommandParams(args[i:], arg)
 			i += j
+
 		} else {
 			fatalError("Unknown option %s\n", arg)
 		}
 	}
+
 	if mailsend.options.PrintSMTPInfo {
 		xprintSMTPInfo()
 		os.Exit(0)
 	}
 
 	logDebug("Number of attachments: %d\n", len(mailsend.attachments))
+
 	for n, attachment := range mailsend.attachments {
+
 		logDebug("%d, File: %s\n", n, attachment.FilePath)
 		logDebug("%d, Encoding type: %s\n", n, attachment.EncodingType)
+
 	}
 
 	errors := validateGlobalFlags()
+
 	if len(errors) > 0 {
+
 		fmt.Printf("\nmailsend-go v%s\n\n", version)
+
 		for _, err := range errors {
 			fmt.Printf("ERROR: %s\n", err.Error())
 		}
+
 		fmt.Printf("\nRun with -h for help\n\n")
 		os.Exit(1)
 	}
+
 	openLogfile()
+
 	sendMail()
 }
