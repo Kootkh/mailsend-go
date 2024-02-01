@@ -409,8 +409,7 @@ func getValidator(tag string) Validator {
 // ------------------------------------------------------------------------------------------------
 
 // Validate required members of structs using reflection
-// muquit@muquit.com - - August-20-2018 20:38:12
-// /////////////////////////////////////////////////////////////////////////////
+
 func validateGlobalFlags() []error {
 	errs := []error{}
 	// validate global options
