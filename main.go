@@ -347,7 +347,11 @@ func fatalError(format string, a ...interface{}) {
 // ------------------------------------------------------------------------------------------------
 // ------------------------------------------------------------------------------------------------
 
-// Validate numeric value
+// Validate - Реализация метода валидации Validate для структур типа NumberValidator.
+//
+// Принимает: валидируемое значение - val (interface{})
+//
+// Возвращает: булево значение и ошибку (если она есть)
 func (v NumberValidator) Validate(val interface{}) (bool, error) {
 	logDebug("in Numberic validator default: %d\n", v.Default)
 	num := val.(int)
@@ -370,7 +374,11 @@ func (v NumberValidator) Validate(val interface{}) (bool, error) {
 // ------------------------------------------------------------------------------------------------
 // ------------------------------------------------------------------------------------------------
 
-// Validate string value
+// Validate - Реализация метода валидации Validate для структур типа StringValidator.
+//
+// Принимает: валидируемое значение - val (interface{})
+//
+// Возвращает: булево значение и ошибку (если она есть)
 func (v StringValidator) Validate(val interface{}) (bool, error) {
 	s := val.(string)
 	l := len(s)
