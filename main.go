@@ -293,6 +293,11 @@ func (v DefaultValidator) Validate(val interface{}) (bool, error) {
 // ------------------------------------------------------------------------------------------------
 // ------------------------------------------------------------------------------------------------
 
+// logDebug - логирует сообщение с заданным форматом через указанные интерфейсы "a" если выставлен флаг "debug".
+//
+// Принимает: формат сообщения - format (string), интерфейсы - a (...interface{})
+//
+// Возвращает: <nothing>
 func logDebug(format string, a ...interface{}) {
 	if debug {
 		log.Printf(format, a...)
@@ -302,6 +307,9 @@ func logDebug(format string, a ...interface{}) {
 // ------------------------------------------------------------------------------------------------
 // ------------------------------------------------------------------------------------------------
 
+// logInfo - логирует сообщение с заданным форматом через указанные интерфейсы "a".
+//
+// Принимает: формат сообщения - format (string), интерфейсы - a (...interface{})
 func logInfo(format string, a ...interface{}) {
 	log.Printf(format, a...)
 }
@@ -309,6 +317,11 @@ func logInfo(format string, a ...interface{}) {
 // ------------------------------------------------------------------------------------------------
 // ------------------------------------------------------------------------------------------------
 
+// logFile - логирует сообщение с заданным форматом через указанные интерфейсы "a" если задан путь к лог-файлу.
+//
+// Принимает: формат сообщения - format (string), интерфейсы - a (...interface{})
+//
+// Возвращает: <nothing>
 func logFile(format string, a ...interface{}) {
 	if len(mailsend.options.LogfilePath) > 0 {
 		log.Printf(format, a...)
@@ -318,6 +331,12 @@ func logFile(format string, a ...interface{}) {
 // ------------------------------------------------------------------------------------------------
 // ------------------------------------------------------------------------------------------------
 
+// fatalError - выводит сообщение об ошибке и выходит из программы.
+//
+// It takes a format string and a variadic list of interface{} as parameters.
+// Принимает: формат сообщения - format (string), интерфейсы - a (...interface{})
+//
+// Возвращает: <nothing>.
 func fatalError(format string, a ...interface{}) {
 	msg := fmt.Sprintf(format, a...)
 	fmt.Fprintf(os.Stderr, "ERROR: %s\n", msg)
@@ -1210,42 +1229,54 @@ func xprintSMTPInfo() {
 // ------------------------------------------------------------------------------------------------
 // ------------------------------------------------------------------------------------------------
 
-// parseAddressListFile - ...
+// parseAddressListFile - Метод парсинга адресного списка
+//
+// Принимает: имя файла адресного списка - listFile (string)
 //
 // Address list file a comma separated Name, Address lines
 func parseAddressListFile(listFile string) {
 
+	// Закидываем список адресов listFile в переменную csvFile
 	csvFile, err := os.Open(listFile)
 
+	// Если не удалось открыть файл, то выходим с ошибкой
 	if err != nil {
 		fatalError("Could not open address list file %s", listFile)
 	}
 
+	// С помощью метода NewReader из пакета csv закидываем содержимое переменной csvFile в переменную reader
 	reader := csv.NewReader(bufio.NewReader(csvFile))
 
+	// Построчно проходим циклом по содержимому переменной reader
 	for {
+
+		// Методом Read() считываем строку из переменной reader в переменную line
 		line, error := reader.Read()
 
+		// Если достигли конца файла, то выходим из цикла
 		if error == io.EOF {
-
 			break
 
+			// Иначе, если произошла ошибка, то выходим с ошибкой
 		} else if error != nil {
-
 			fatalError("Error parsing address list CSV file: %s", error)
 		}
 
-		// If line starts with # ignore. Issue #6
+		// Issue #6
+		// Если строка начинается с "#" (комментарий), то игнорируем её, итерируя цикл
 		comment := strings.HasPrefix(line[0], "#")
-
 		if comment {
 			continue
 		}
 
+		// Присваиваем переменной al новый экземпляр структуры AddressList
 		al := NewAddressList()
+
+		// Присваиваем значения полей структуры
 		al.name = line[0]
 		al.address = strings.TrimSpace(line[1])
 
+		// Добавляем по указателю содержимое переменной *al в список адресов mailsend.addressList
 		mailsend.addressList = append(mailsend.addressList, *al)
 	}
 
@@ -1254,7 +1285,7 @@ func parseAddressListFile(listFile string) {
 // ------------------------------------------------------------------------------------------------
 // ------------------------------------------------------------------------------------------------
 
-// openLogfile - ...
+// openLogfile - Метод открытия лог-файла
 func openLogfile() {
 
 	path := mailsend.options.LogfilePath
